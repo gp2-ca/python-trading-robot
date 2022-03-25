@@ -18,13 +18,16 @@ from pyrobot.stock_frame import StockFrame
 from td.client import TDClient
 from td.utils import TDUtilities
 
+from pyrobot.broker_base import Broker, Quote
+from pyrobot.broker_td import BrokerTD
+from pyrobot.broker_alpaca import BrokerAlpaca
+
 # We are going to be doing some timestamp conversions.
 milliseconds_since_epoch = TDUtilities().milliseconds_since_epoch
 
-
 class PyRobot():
 
-    def __init__(self, client_id: str, redirect_uri: str, paper_trading: bool = True, credentials_path: str = None, trading_account: str = None) -> None:
+    def __init__(self, broker: str, parameters: dict, paper_trading: bool = True, credentials_path: str = None, trading_account: str = None) -> None:
         """Initalizes a new instance of the robot and logs into the API platform specified.
 
         Arguments:
@@ -46,10 +49,10 @@ class PyRobot():
 
         # Set the attirbutes
         self.trading_account = trading_account
-        self.client_id = client_id
-        self.redirect_uri = redirect_uri
-        self.credentials_path = credentials_path
-        self.session: TDClient = self._create_session()
+        # self.client_id = client_id
+        # self.redirect_uri = redirect_uri
+        # self.credentials_path = credentials_path
+        self.session: Broker = self._create_session(broker, parameters)
         self.trades = {}
         self.historical_prices = {}
         self.stock_frame: StockFrame = None
@@ -58,7 +61,7 @@ class PyRobot():
         self._bar_size = None
         self._bar_type = None
 
-    def _create_session(self) -> TDClient:
+    def _create_session(self, broker, parameters) -> Broker:
         """Start a new session.
 
         Creates a new session with the TD Ameritrade API and logs the user into
@@ -70,17 +73,15 @@ class PyRobot():
 
         """
 
-        # Create a new instance of the client
-        td_client = TDClient(
-            client_id=self.client_id,
-            redirect_uri=self.redirect_uri,
-            credentials_path=self.credentials_path
-        )
+        # Create a new instance of the broker client
+        # TODO verify if required parameters are present in dict for each broker
+        if(broker == "TDAmeritrade"):
+            broker_client = BrokerTD(parameters["client_id"], parameters["redirect_uri"], parameters["credentials_path"])
 
-        # log the client into the new session
-        td_client.login()
+        elif(broker == "Alpaca"):
+            broker_client = BrokerAlpaca(parameters["api_key"], parameters["secret_key"], parameters["base_url"], parameters["data_url"])
 
-        return td_client
+        return broker_client
 
     @property
     def pre_market_open(self) -> bool:
