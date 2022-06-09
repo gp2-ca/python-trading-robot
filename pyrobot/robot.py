@@ -18,7 +18,7 @@ from pyrobot.stock_frame import StockFrame
 from td.client import TDClient
 from td.utils import TDUtilities
 
-from pyrobot.broker_base import Broker, Quote
+from pyrobot.broker_base import Broker, Quote, Order
 from pyrobot.broker_td import BrokerTD
 from pyrobot.broker_alpaca import BrokerAlpaca
 
@@ -333,7 +333,7 @@ class PyRobot():
 
         # Set the Client.
         trade.account = self.trading_account
-        trade._td_client = self.session
+        trade._broker = self.session
 
         self.trades[trade_id] = trade
 
@@ -798,7 +798,7 @@ class PyRobot():
 
         return order_responses
 
-    def execute_orders(self, trade_obj: Trade) -> dict:
+    def execute_orders(self, trade_obj: Trade) -> Order: 
         """Executes a Trade Object.
 
         Overview:
@@ -817,18 +817,17 @@ class PyRobot():
         """
 
         # Execute the order.
-        order_dict = self.session.place_order(
-            account=self.trading_account,
+        order = self.session.place_order(
             order=trade_obj.order
         )
 
         # Store the order.
-        trade_obj._order_response = order_dict
+        trade_obj._order_response = order
 
         # Process the order response.
         trade_obj._process_order_response()
 
-        return order_dict
+        return order
 
     def save_orders(self, order_response_dict: dict) -> bool:
         """Saves the order to a JSON file for further review.

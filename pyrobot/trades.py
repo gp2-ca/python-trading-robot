@@ -5,6 +5,7 @@ from typing import List
 from typing import Dict
 
 from td.client import TDClient
+from pyrobot.broker_base import Broker, Order
 
 
 class Trade():
@@ -27,18 +28,18 @@ class Trade():
         self.trade_id = ""
         self.order_id = ""
         self.account = ""
-        self.order_status = "NOT_PLACED"
+        self.order_status = ""
 
         self.side = ""
         self.side_opposite = ""
         self.enter_or_exit = ""
         self.enter_or_exit_opposite = ""
 
-        self._order_response = {}
+        self._order_response: Order
         self._triggered_added = False
         self._multi_leg = False
         self._one_cancels_other = False
-        self._td_client: TDClient = None
+        self._broker: Broker = None
     
     def to_dict(self) -> dict:
 
@@ -514,20 +515,20 @@ class Trade():
         # We need to basis to calculate off of. Use the price.
         if self.order_type == 'mkt':
 
-            quote = self._td_client.get_quotes(instruments=[self.symbol])
+            quotes = self._broker.get_quotes(instruments=[self.symbol])
 
             # Have to make a call to Get Quotes.
-            price = quote[self.symbol]['lastPrice']
+            price = quotes[0].ask_price
 
         elif self.order_type == 'lmt':
             price = self.price
         
         else:
 
-            quote = self._td_client.get_quotes(instruments=[self.symbol])
+            quote = self._broker.get_quotes(instruments=[self.symbol])
 
             # Have to make a call to Get Quotes.
-            price = quote[self.symbol]['lastPrice']
+            price = quotes[0].ask_price
         
         return round(price, 2)
 
@@ -680,7 +681,7 @@ class Trade():
                 'Invalid session, choose either am, pm, normal, or seamless')
 
     @property
-    def order_response(self) -> dict:
+    def order_response(self) -> Order:
         """Returns the order response from submitting an order.
 
         Returns:
@@ -691,7 +692,7 @@ class Trade():
         return self._order_response
 
     @order_response.setter
-    def order_response(self, order_response_dict: dict) -> None:
+    def order_response(self, order_response_dict: Order) -> None:
         """Sets the order response from submitting an order.
 
         Arguments:
@@ -876,21 +877,20 @@ class Trade():
     def _process_order_response(self) -> None:
         """Processes an order response, after is has been submitted."""        
         
-        self.order_id =  self._order_response["order_id"]
-        self.order_status = "QUEUED"
+        self.order_id =  self._order_response.id
+        self.order_status = self.order_response.status
     
     def _update_order_status(self) -> None:
         """Updates the current order status, to reflect what's on TD."""        
 
         if self.order_id != "":
 
-            order_response = self._td_client.get_orders(
-                account=self.account,
+            order_response = self._broker.get_order(
                 order_id=self.order_id
             )
 
             self.order_response = order_response
-            self.order_status = self.order_response['status']
+            self.order_status = self.order_response.status
     
     def check_status(self) -> object:
         """Used to easily identify the order status.
@@ -917,7 +917,7 @@ class Trade():
             
             # Get the latest price.
             quote = self._td_client.get_quotes(instruments=[self.symbol])
-            last_price = quote[self.symbol]['lastPrice']
+            last_price = quote[0].ask_price
             
             # Update the price.
             if order['orderType'] == 'STOP':

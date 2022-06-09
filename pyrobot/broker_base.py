@@ -12,6 +12,26 @@ class Quote:
     bid_price: float
     bid_size: int
 
+@dataclass
+class Order:
+    id: str
+    time_created: str
+    time_updated: str
+    time_submitted: str
+    symbol: str
+    quantity: float
+    notional: float # dollar amount to trade
+    side: str # buy or sell
+    type: str # market, limit, etc.
+    time_in_force: str # day, gtc, opg, etc.
+    limit_price: float
+    stop_price: float
+    trail_price: float
+    trail_percent: float
+    status: str
+    extended_hours: bool
+
+
 class Broker(ABC): 
 
     @property
@@ -146,4 +166,16 @@ class Broker(ABC):
 
     @abstractmethod
     def get_quotes(self, instruments: list) -> list:
+        pass
+
+    @abstractmethod
+    def get_orders(self) -> list:
+        pass
+
+    @abstractmethod
+    def get_order(self, order_id) -> Order:
+        pass
+
+    @abstractmethod
+    def place_order(self, order: Order):
         pass
