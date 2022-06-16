@@ -12,6 +12,7 @@ td-ameritrade-python-api = "^0.3.5"
 pdoc = "^12.0.0"
 
 [tool.poetry.dev-dependencies]
+autopep8 = "^1.6.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

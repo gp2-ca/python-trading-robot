@@ -916,7 +916,7 @@ class Trade():
         for order in children:
             
             # Get the latest price.
-            quote = self._td_client.get_quotes(instruments=[self.symbol])
+            quote = self._broker.get_quotes(instruments=[self.symbol])
             last_price = quote[0].ask_price
             
             # Update the price.

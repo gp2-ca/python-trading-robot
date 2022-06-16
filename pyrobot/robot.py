@@ -235,10 +235,7 @@ class PyRobot():
         """
 
         # Initalize the portfolio.
-        self.portfolio = Portfolio(account_number=self.trading_account)
-
-        # Assign the Client
-        self.portfolio.td_client = self.session
+        self.portfolio = Portfolio(self.session, account_number=self.trading_account)
 
         return self.portfolio
 
@@ -437,7 +434,7 @@ class PyRobot():
         """
 
         # First grab all the symbols.
-        symbols = self.portfolio.positions.keys()
+        symbols = self.portfolio.list_positions_symbols()
 
         # Grab the quotes.
         quotes = self.session.get_quotes(instruments=list(symbols))

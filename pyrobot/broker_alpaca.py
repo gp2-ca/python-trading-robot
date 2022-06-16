@@ -1,4 +1,5 @@
-from pyrobot.broker_base import Broker, Quote, Order
+from pyrobot.broker_base import Broker, Quote, Order, Position, Positions
+from typing import List
 
 import alpaca_trade_api as tradeapi
 
@@ -37,16 +38,17 @@ class BrokerAlpaca(Broker):
 
         return clock.is_open
 
-    def get_quotes(self, instruments: list) -> list:
-        quotes_from_api = self.api.get_latest_quotes(instruments)
-        quotes = list()
-        for symbol in quotes_from_api:
-            quote = quotes_from_api[symbol]
-            quotes.append(Quote(symbol, quote.ap, quote._raw["as"], quote.bp, quote.bs))
+    def get_quotes(self, instruments: list) -> List[Quote]:
+        quotes = []
+        if len(instruments) > 0:
+            quotes_from_api = self.api.get_latest_quotes(instruments)
+            for symbol in quotes_from_api:
+                quote = quotes_from_api[symbol]
+                quotes.append(Quote(symbol, quote.ap, quote._raw["as"], quote.bp, quote.bs))
 
         return quotes
 
-    def get_orders(self) -> list:
+    def get_orders(self) -> List[Order]:
         orders_from_api = self.api.list_orders()
         orders = list()
         for order in orders_from_api:
@@ -68,3 +70,11 @@ class BrokerAlpaca(Broker):
                       order_from_api.stop_price, order_from_api.trail_price, order_from_api.trail_percent, order_from_api.status, order_from_api.extended_hours)
 
         return newOrder
+
+    def get_positions(self) -> Positions:
+        positions_from_api = self.api.list_positions()
+        positions: Positions = []
+        for position in positions_from_api:
+            positions.append(Position(position.symbol, position.asset_class, position.avg_entity_price, position.qty, position.side_basis))
+
+        return positions

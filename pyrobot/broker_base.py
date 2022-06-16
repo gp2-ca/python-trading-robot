@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from dataclasses import dataclass
+from typing import List
 
 @dataclass
 class Quote:
@@ -31,6 +32,18 @@ class Order:
     status: str
     extended_hours: bool
 
+@dataclass
+class Position:
+    symbol: str
+    assest_type: str
+    side: str
+    avg_price: float = 0.0
+    quantity: float = 0
+
+    def cost_basis(self) -> float:
+        return self.quantity * self.avg_price
+
+Positions = List[Position]
 
 class Broker(ABC): 
 
@@ -165,11 +178,11 @@ class Broker(ABC):
 
 
     @abstractmethod
-    def get_quotes(self, instruments: list) -> list:
+    def get_quotes(self, instruments: list) -> List[Quote]:
         pass
 
     @abstractmethod
-    def get_orders(self) -> list:
+    def get_orders(self) -> List[Order]:
         pass
 
     @abstractmethod
@@ -178,4 +191,8 @@ class Broker(ABC):
 
     @abstractmethod
     def place_order(self, order: Order):
+        pass
+
+    @abstractmethod
+    def get_positions(self) -> List[Position]:
         pass

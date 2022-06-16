@@ -1,18 +1,15 @@
 import numpy as np
 
 from pandas import DataFrame
-from typing import Tuple
-from typing import List
-from typing import Optional
-
+from typing import Tuple, List, Optional
 
 from pyrobot.stock_frame import StockFrame
-from td.client import TDClient
-
+from pyrobot.broker_base import Broker, Position, Positions
 
 class Portfolio():
 
-    def __init__(self, account_number: Optional[str] = None) -> None:
+
+    def __init__(self, broker: Broker, account_number: Optional[str] = None ) -> None:
         """Initalizes a new instance of the Portfolio object.
 
         Keyword Arguments:
@@ -20,8 +17,7 @@ class Portfolio():
         account_number {str} -- An accout number to associate with the Portfolio. (default: {None})
         """
 
-        self.positions = {}
-        self.positions_count = 0
+        self.positions: list = []
 
         self.profit_loss = 0.00
         self.market_value = 0.00
@@ -30,11 +26,13 @@ class Portfolio():
 
         self._historical_prices = []
 
-        self._td_client: TDClient = None
+        self._broker: Broker = broker
         self._stock_frame: StockFrame = None
         self._stock_frame_daily: StockFrame = None
 
-    def add_positions(self, positions: List[dict]) -> dict:
+        self.sync()
+
+    def add_positions(self, positions: Positions) -> Positions: 
         """Add Multiple positions to the portfolio at once.
 
         This method will take an iterable containing the values
@@ -94,11 +92,10 @@ class Portfolio():
 
                 # Add the position.
                 self.add_position(
-                    symbol=position['symbol'],
-                    asset_type=position['asset_type'],
-                    quantity=position.get('quantity', 0),
-                    purchase_price=position.get('purchase_price', 0.0),
-                    purchase_date=position.get('purchase_date', None)
+                    symbol=position.symbol,
+                    asset_type=position.assest_type,
+                    quantity=position.quantity,
+                    purchase_price=position.avg_price,
                 )
 
             return self.positions
@@ -106,7 +103,7 @@ class Portfolio():
         else:
             raise TypeError('Positions must be a list of dictionaries.')
 
-    def add_position(self, symbol: str, asset_type: str, purchase_date: Optional[str] = None, quantity: int = 0, purchase_price: float = 0.0) -> dict:
+    def add_position(self, symbol: str, asset_type: str, purchase_date: Optional[str] = None, quantity: int = 0, purchase_price: float = 0.0) -> Position:
         """Adds a single new position to the the portfolio.
 
         Arguments:
@@ -148,19 +145,15 @@ class Portfolio():
             }
         """
 
-        self.positions[symbol] = {}
-        self.positions[symbol]['symbol'] = symbol
-        self.positions[symbol]['quantity'] = quantity
-        self.positions[symbol]['purchase_price'] = purchase_price
-        self.positions[symbol]['purchase_date'] = purchase_date
-        self.positions[symbol]['asset_type'] = asset_type
+        new_position = Position(symbol, asset_type, purchase_price, quantity)
+        self.positions.append(new_position)
 
-        if purchase_date:
-            self.positions[symbol]['ownership_status'] = True
-        else:
-            self.positions[symbol]['ownership_status'] = False
+        # if purchase_date:
+        #     self.positions[symbol]['ownership_status'] = True
+        # else:
+        #     self.positions[symbol]['ownership_status'] = False
 
-        return self.positions[symbol]
+        return new_position
 
     def remove_position(self, symbol: str) -> Tuple[bool, str]:
         """Deletes a single position from the portfolio.
@@ -194,8 +187,10 @@ class Portfolio():
             (False, 'AAPL did not exist in the porfolio.')
         """
 
-        if symbol in self.positions:
-            del self.positions[symbol]
+        if symbol in self.list_positions_symbols():
+            for position in self.positions:
+                if position.symbol == symbol:
+                    self.positions.remove(position)
             return (True, "{symbol} was successfully removed.".format(symbol=symbol))
         else:
             return (False, "{symbol} did not exist in the porfolio.".format(symbol=symbol))
@@ -211,9 +206,9 @@ class Portfolio():
             'furex': []
         }
 
-        if len(self.positions.keys()) > 0:
-            for symbol in self.positions:
-                total_allocation[self.positions[symbol]['asset_type']].append(self.positions[symbol])
+        if self.positions.count() > 0:
+            for position in self.positions:
+                total_allocation[position.asset_type].append(position.symbol)
 
     def portfolio_variance(self, weights: dict, covariance_matrix: DataFrame) -> dict:
 
@@ -320,10 +315,10 @@ class Portfolio():
         weights = {}
 
         # First grab all the symbols.
-        symbols = self.positions.keys()
+        symbols = self.list_positions_symbols()
 
         # Grab the quotes.
-        quotes = self.td_client.get_quotes(instruments=list(symbols))
+        quotes = self.broker.get_quotes(instruments=list(symbols))
 
         # Grab the projected market value.
         projected_market_value_dict = self.projected_market_value(
@@ -344,10 +339,10 @@ class Portfolio():
         """Generates a summary of our portfolio."""
 
         # First grab all the symbols.
-        symbols = self.positions.keys()
+        symbols = self.list_positions_symbols()
 
         # Grab the quotes.
-        quotes = self.td_client.get_quotes(instruments=list(symbols))
+        quotes = self.broker.get_quotes(instruments=list(symbols))
 
         portfolio_summary_dict = {}
         portfolio_summary_dict['projected_market_value'] = self.projected_market_value(
@@ -381,7 +376,7 @@ class Portfolio():
                 True
         """
 
-        if symbol in self.positions:
+        if symbol in self.list_positions_symbols():
             return True
         else:
             return False
@@ -601,26 +596,26 @@ class Portfolio():
         self._stock_frame = stock_frame
 
     @property
-    def td_client(self) -> TDClient:
-        """Gets the TDClient object for the Portfolio
+    def broker(self) -> Broker:
+        """Gets the Broker object for the Portfolio
 
         Returns:
         ----
-        {TDClient} -- An authenticated session with the TD API.
+        {Broker} -- An authenticated session with the chosen broker
         """
 
-        return self._td_client
+        return self._broker
 
-    @td_client.setter
-    def td_client(self, td_client: TDClient) -> None:
-        """Sets the TDClient object for the Portfolio
+    @broker.setter
+    def broker(self, broker: Broker) -> None:
+        """Sets the Broker object for the Portfolio
 
         Arguments:
         ----
-        td_client {TDClient} -- An authenticated session with the TD API.
+        broker {Broker} -- An authenticated session with the chosen broker
         """
 
-        self._td_client: TDClient = td_client
+        self._broker: Broker = broker
 
     def _grab_daily_historical_prices(self) -> StockFrame:
         """Grabs the daily historical prices for each position.
@@ -633,10 +628,10 @@ class Portfolio():
         new_prices = []
 
         # Loop through each position.
-        for symbol in self.positions:
+        for symbol in self.list_positions_symbols():
 
             # Grab the historical prices.
-            historical_prices_response = self.td_client.get_price_history(
+            historical_prices_response = self.broker.get_price_history(
                 symbol=symbol,
                 period_type='year',
                 period=1,
@@ -663,3 +658,16 @@ class Portfolio():
         self._stock_frame_daily.create_frame()
 
         return self._stock_frame_daily
+
+    def sync(self) -> None:
+        #Get positions from the broker api
+        positions_from_broker = self.broker.get_positions()
+        self.positions = positions_from_broker
+        
+    def list_positions_symbols(self) -> List[str]:
+        symbols: List[str] = []
+        if(len(self.positions) > 0):
+            for position in self.positions:
+                symbols.append(position.symbol)
+
+        return symbols
