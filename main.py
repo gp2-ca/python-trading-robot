@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 import pprint
+import datetime
 
 from pyrobot.robot import PyRobot
 from pyrobot.indicators import Indicators
@@ -71,3 +72,12 @@ pprint.pprint(current_quotes)
 # Get the current orders
 orders = trading_robot.session.get_orders()
 pprint.pprint(orders)
+
+# tz = datetime.timezone(-datetime.timedelta(hours=4), name="America/New_York")
+tz = datetime.timezone.utc
+today = datetime.date.today()
+start_of_day = datetime.datetime(today.year, today.month, today.day, tzinfo=tz)
+latest_time = datetime.datetime.now(tz=tz)-datetime.timedelta(minutes=15, seconds=1)
+
+bars = trading_robot.session.get_price_history("TSLA", start_of_day, latest_time)
+pprint.pprint(bars)
