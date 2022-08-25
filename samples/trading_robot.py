@@ -1,54 +1,72 @@
 
+import sys
+import os
+
+sys.path.append(os.path.join(sys.path[0], '..'))
+
 import time as time_lib
 import pprint
 import pathlib
 import operator
 import pandas as pd
 
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone, date
 from configparser import ConfigParser
 
 from pyrobot.robot import PyRobot
 from pyrobot.indicators import Indicators
 
+from pyrobot.broker_base import Position, Positions, Quote, Quotes
+
 # Grab configuration values.
 config = ConfigParser()
-config.read('configs/config.ini')
+config.read('config/config.ini')
 
-CLIENT_ID = config.get('main', 'CLIENT_ID')
-REDIRECT_URI = config.get('main', 'REDIRECT_URI')
-CREDENTIALS_PATH = config.get('main', 'JSON_PATH')
-ACCOUNT_NUMBER = config.get('main', 'ACCOUNT_NUMBER')
+# CLIENT_ID = config.get('main', 'CLIENT_ID')
+# REDIRECT_URI = config.get('main', 'REDIRECT_URI')
+# CREDENTIALS_PATH = config.get('main', 'JSON_PATH')
+# ACCOUNT_NUMBER = config.get('main', 'ACCOUNT_NUMBER')
 
 # Initalize the robot.
-trading_robot = PyRobot(
-    client_id=CLIENT_ID,
-    redirect_uri=REDIRECT_URI,
-    credentials_path=CREDENTIALS_PATH,
-    paper_trading=True
-)
+# trading_robot = PyRobot(
+#     client_id=CLIENT_ID,
+#     redirect_uri=REDIRECT_URI,
+#     credentials_path=CREDENTIALS_PATH,
+#     paper_trading=True
+# )
+
+parameters = {}
+parameters["api_key"] = config.get('main', 'API_KEY')
+parameters["secret_key"] = config.get('main', 'SECRET_KEY')
+parameters["base_url"] = config.get('main', 'BASE_URL')
+parameters["data_url"] = config.get('main', 'DATA_URL')
+
+trading_robot = PyRobot("Alpaca", parameters)
 
 # Create a Portfolio
 trading_robot_portfolio = trading_robot.create_portfolio()
 
 # Define mutliple positions to add.
-multi_position = [
-    {
-        'asset_type': 'equity',
-        'quantity': 2,
-        'purchase_price': 4.00,
-        'symbol': 'TSLA',
-        'purchase_date': '2020-01-31'
-    },
-    {
-        'asset_type': 'equity',
-        'quantity': 2,
-        'purchase_price': 4.00,
-        'symbol': 'SQ',
-        'purchase_date': '2020-01-31'
-    }
-]
+multi_position: Positions = []
+multi_position.append(Position(symbol="TLSA", asset_type="equity", side="long", avg_price=4.0, quantity=2))
+multi_position.append(Position(symbol="SQ", asset_type="equity", side="long", avg_price=3.00, quantity=5))
+
+# multi_position = [
+#     {
+#         'asset_type': 'equity',
+#         'quantity': 2,
+#         'purchase_price': 4.00,
+#         'symbol': 'TSLA',
+#         'purchase_date': '2020-01-31'
+#     },
+#     {
+#         'asset_type': 'equity',
+#         'quantity': 2,
+#         'purchase_price': 4.00,
+#         'symbol': 'SQ',
+#         'purchase_date': '2020-01-31'
+#     }
+# ]
 
 # Grab the New positions
 new_positions = trading_robot.portfolio.add_positions(positions=multi_position)
@@ -94,9 +112,13 @@ current_quotes = trading_robot.grab_current_quotes()
 pprint.pprint(current_quotes)
 
 # Let's see if our Microsoft Position is profitable.
+for quote in current_quotes:
+    if quote.symbol == "MSFT":
+        break
+
 is_msft_porfitable = trading_robot.portfolio.is_profitable(
     symbol="MSFT",
-    current_price=current_quotes['MSFT']['lastPrice']
+    current_price=quote.ask_price
 )
 print("Is Microsoft Profitable: {answer}".format(answer=is_msft_porfitable))
 
@@ -138,7 +160,9 @@ new_trade.add_stop_loss(
 pprint.pprint(new_trade.order)
 
 # Grab historical prices, first define the start date and end date.
-start_date = datetime.today()
+tz = timezone.utc
+today = date.today()
+start_date = datetime(today.year, today.month, today.day, tzinfo=tz)
 end_date = start_date - timedelta(days=30)
 
 # Grab the historical prices.
@@ -146,7 +170,7 @@ historical_prices = trading_robot.grab_historical_prices(
     start=end_date,
     end=start_date,
     bar_size=1,
-    bar_type='minute'
+    bar_type='Min'
 )
 
 # Convert data to a Data Frame.
