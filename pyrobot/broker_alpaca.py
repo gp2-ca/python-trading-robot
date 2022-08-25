@@ -1,4 +1,4 @@
-from pyrobot.broker_base import Broker, Quote, Order, Position, Positions
+from pyrobot.broker_base import Broker, Quote, Order, Position, Positions, Bar, Bars
 from typing import List
 
 import alpaca_trade_api as tradeapi
@@ -75,6 +75,21 @@ class BrokerAlpaca(Broker):
         positions_from_api = self.api.list_positions()
         positions: Positions = []
         for position in positions_from_api:
-            positions.append(Position(position.symbol, position.asset_class, position.avg_entity_price, position.qty, position.side_basis))
+            positions.append(Position(position.symbol, position.asset_class, position.side, position.avg_entry_price, position.qty))
 
         return positions
+
+    def get_price_history(self, symbol: str, start_date, end_date, frequency_type = "Min", frequency = 1) -> Bars:
+        # if not using pro data package, make sure end_date is at least 15 min late from current time
+        time_frame = tradeapi.TimeFrame(frequency, tradeapi.TimeFrameUnit(frequency_type)) 
+        
+        start = start_date.isoformat()
+        end = end_date.isoformat(timespec='seconds')
+
+        bars_from_api = self.api.get_bars(symbol, timeframe=time_frame, start=start, end=end)
+        bars: Bars = []
+
+        for bar in bars_from_api:
+            bars.append(Bar(symbol, bar.t, bar.o, bar.h, bar.l, bar.c, bar.v))
+
+        return bars

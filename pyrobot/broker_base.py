@@ -35,7 +35,7 @@ class Order:
 @dataclass
 class Position:
     symbol: str
-    assest_type: str
+    asset_type: str
     side: str
     avg_price: float = 0.0
     quantity: float = 0
@@ -43,7 +43,19 @@ class Position:
     def cost_basis(self) -> float:
         return self.quantity * self.avg_price
 
+@dataclass
+class Bar:
+    symbol: str
+    datetime: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+
 Positions = List[Position]
+Bars = List[Bar]
+Quotes = List[Quote]
 
 class Broker(ABC): 
 
@@ -194,5 +206,9 @@ class Broker(ABC):
         pass
 
     @abstractmethod
-    def get_positions(self) -> List[Position]:
+    def get_positions(self) -> Positions:
+        pass
+
+    @abstractmethod
+    def get_price_history(self, symbol: str, start_date: datetime, end_date: datetime, frequency_type: str = "Min", frequency: int = 1) -> Bars:
         pass
