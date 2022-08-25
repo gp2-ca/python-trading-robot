@@ -1,4 +1,5 @@
 import numpy as np
+import datetime
 
 from pandas import DataFrame
 from typing import Tuple, List, Optional
@@ -93,7 +94,7 @@ class Portfolio():
                 # Add the position.
                 self.add_position(
                     symbol=position.symbol,
-                    asset_type=position.assest_type,
+                    asset_type=position.asset_type,
                     quantity=position.quantity,
                     purchase_price=position.avg_price,
                 )
@@ -457,7 +458,7 @@ class Portfolio():
 
         # Grab the purchase price, if it exists.
         if self.in_portfolio(symbol=symbol):
-            purchase_price = self.positions[symbol]['purchase_price']
+            purchase_price = self.find_position_from_symbol(symbol).avg_price
         else:
             raise KeyError("The Symbol you tried to request does not exist.")
 
@@ -626,6 +627,11 @@ class Portfolio():
         """
 
         new_prices = []
+        
+        tz = datetime.timezone.utc
+        today = datetime.date.today()
+        start_of_today = datetime.datetime(today.year, today.month, today.day, tzinfo=tz)
+        a_year_ago = start_of_today-datetime.timedelta(weeks=52)
 
         # Loop through each position.
         for symbol in self.list_positions_symbols():
@@ -633,24 +639,23 @@ class Portfolio():
             # Grab the historical prices.
             historical_prices_response = self.broker.get_price_history(
                 symbol=symbol,
-                period_type='year',
-                period=1,
-                frequency_type='daily',
+                start_date=a_year_ago,
+                end_date=start_of_today,
+                frequency_type='Day',
                 frequency=1,
-                extended_hours=True
             )
 
             # Loop through the chandles.
-            for candle in historical_prices_response['candles']:
+            for candle in historical_prices_response:
 
                 new_price_mini_dict = {}
                 new_price_mini_dict['symbol'] = symbol
-                new_price_mini_dict['open'] = candle['open']
-                new_price_mini_dict['close'] = candle['close']
-                new_price_mini_dict['high'] = candle['high']
-                new_price_mini_dict['low'] = candle['low']
-                new_price_mini_dict['volume'] = candle['volume']
-                new_price_mini_dict['datetime'] = candle['datetime']
+                new_price_mini_dict['open'] = candle.open
+                new_price_mini_dict['close'] = candle.close
+                new_price_mini_dict['high'] = candle.high
+                new_price_mini_dict['low'] = candle.low
+                new_price_mini_dict['volume'] = candle.volume
+                new_price_mini_dict['datetime'] = candle.datetime
                 new_prices.append(new_price_mini_dict)
 
         # Create and set the StockFrame
@@ -671,3 +676,12 @@ class Portfolio():
                 symbols.append(position.symbol)
 
         return symbols
+
+    def find_position_from_symbol(self, symbol: str) -> Position:
+        position_ret: Position = None
+        if(len(self.positions) > 0):
+            for position in self.positions:
+                if position.symbol == symbol:
+                    position_ret = position
+                    break
+        return position_ret

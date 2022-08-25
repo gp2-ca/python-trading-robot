@@ -361,7 +361,7 @@ class PyRobot():
         if index in self.trades:
             del self.trades[index]
 
-    def grab_current_quotes(self) -> dict:
+    def grab_current_quotes(self) -> List:
         """Grabs the current quotes for all positions in the portfolio.
 
         Makes a call to the TD Ameritrade Get Quotes endpoint with all
@@ -442,7 +442,7 @@ class PyRobot():
         return quotes
 
     def grab_historical_prices(self, start: datetime, end: datetime, bar_size: int = 1,
-                               bar_type: str = 'minute', symbols: List[str] = None) -> List[dict]:
+                               bar_type: str = 'Min', symbols: List[str] = None) -> List[dict]:
         """Grabs the historical prices for all the postions in a portfolio.
 
         Overview:
@@ -489,39 +489,37 @@ class PyRobot():
         self._bar_size = bar_size
         self._bar_type = bar_type
 
-        start = str(milliseconds_since_epoch(dt_object=start))
-        end = str(milliseconds_since_epoch(dt_object=end))
+        #start = str(milliseconds_since_epoch(dt_object=start))
+        #end = str(milliseconds_since_epoch(dt_object=end))
 
         new_prices = []
 
         if not symbols:
-            symbols = self.portfolio.positions
+            symbols = self.portfolio.list_positions_symbols()
 
         for symbol in symbols:
 
             historical_prices_response = self.session.get_price_history(
                 symbol=symbol,
-                period_type='day',
                 start_date=start,
                 end_date=end,
                 frequency_type=bar_type,
                 frequency=bar_size,
-                extended_hours=True
             )
 
             self.historical_prices[symbol] = {}
-            self.historical_prices[symbol]['candles'] = historical_prices_response['candles']
+            self.historical_prices[symbol]['candles'] = historical_prices_response
 
-            for candle in historical_prices_response['candles']:
+            for candle in historical_prices_response:
 
                 new_price_mini_dict = {}
                 new_price_mini_dict['symbol'] = symbol
-                new_price_mini_dict['open'] = candle['open']
-                new_price_mini_dict['close'] = candle['close']
-                new_price_mini_dict['high'] = candle['high']
-                new_price_mini_dict['low'] = candle['low']
-                new_price_mini_dict['volume'] = candle['volume']
-                new_price_mini_dict['datetime'] = candle['datetime']
+                new_price_mini_dict['open'] = candle.open
+                new_price_mini_dict['close'] = candle.close
+                new_price_mini_dict['high'] = candle.high
+                new_price_mini_dict['low'] = candle.low
+                new_price_mini_dict['volume'] = candle.volume
+                new_price_mini_dict['datetime'] = candle.datetime
                 new_prices.append(new_price_mini_dict)
 
         self.historical_prices['aggregated'] = new_prices
@@ -551,27 +549,25 @@ class PyRobot():
         bar_type = self._bar_type
 
         # Define the start and end date.
-        end_date = datetime.today()
-        start_date = end_date - timedelta(days=1)
-        start = str(milliseconds_since_epoch(dt_object=start_date))
-        end = str(milliseconds_since_epoch(dt_object=end_date))
+        end = datetime.today()
+        start = end - timedelta(days=1)
+        # start = str(milliseconds_since_epoch(dt_object=start_date))
+        # end = str(milliseconds_since_epoch(dt_object=end_date))
 
         latest_prices = []
 
         # Loop through each symbol.
-        for symbol in self.portfolio.positions:
+        for symbol in self.portfolio.list_positions_symbols():
 
             try:
 
                 # Grab the request.
                 historical_prices_response = self.session.get_price_history(
                     symbol=symbol,
-                    period_type='day',
                     start_date=start,
                     end_date=end,
                     frequency_type=bar_type,
                     frequency=bar_size,
-                    extended_hours=True
                 )
 
             except:
@@ -581,25 +577,23 @@ class PyRobot():
                 # Grab the request.
                 historical_prices_response = self.session.get_price_history(
                     symbol=symbol,
-                    period_type='day',
                     start_date=start,
                     end_date=end,
                     frequency_type=bar_type,
                     frequency=bar_size,
-                    extended_hours=True
                 )
 
             # parse the candles.
-            for candle in historical_prices_response['candles'][-1:]:
+            for candle in historical_prices_response:
 
                 new_price_mini_dict = {}
                 new_price_mini_dict['symbol'] = symbol
-                new_price_mini_dict['open'] = candle['open']
-                new_price_mini_dict['close'] = candle['close']
-                new_price_mini_dict['high'] = candle['high']
-                new_price_mini_dict['low'] = candle['low']
-                new_price_mini_dict['volume'] = candle['volume']
-                new_price_mini_dict['datetime'] = candle['datetime']
+                new_price_mini_dict['open'] = candle.open
+                new_price_mini_dict['close'] = candle.close
+                new_price_mini_dict['high'] = candle.high
+                new_price_mini_dict['low'] = candle.low
+                new_price_mini_dict['volume'] = candle.volume
+                new_price_mini_dict['datetime'] = candle.datetime
                 latest_prices.append(new_price_mini_dict)
 
         return latest_prices
