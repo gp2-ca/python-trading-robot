@@ -5,11 +5,16 @@ description = "GP2 trading robot"
 authors = ["Patrick Payeur <payeurp@hotmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8,<3.11"
 pandas = "^1.4.2"
 alpaca-trade-api = "^2.0.0"
 td-ameritrade-python-api = "^0.3.5"
 pdoc = "^12.0.0"
+keras = "~2.11.0"
+scikit-learn = "^1.2.1"
+tensorflow = "~2.11.0"
+protobuf = "^3.19.0"
+matplotlib = "^3.7.1"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^1.6.0"
