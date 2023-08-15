@@ -1,0 +1,6 @@
+pandas
+alpaca-trade-api
+tensorflow
+matplotlib
+gymnasium
+ipykernel
